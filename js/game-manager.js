@@ -60,22 +60,11 @@
   function enterGame(url, bgmKey){
     if (!overlay || !frame) return;
     const isMessenger = (bgmKey === "messenger");
-    const targetHref = new URL(url, location.href).href;
-    const srcChanged = frame.src !== targetHref;
 
-    // src를 바꿔야 할 때: iframe이 로드 완료되기 전에 overlay가 열리면
-    // 기존 social-messenger 화면이 잠깐 비침 → frame을 투명처리 후 load 후에 복원
-    if (srcChanged) {
-      frame.style.opacity = "0";
-      frame.src = url;
-      var _loadTimer = setTimeout(function() { frame.style.opacity = ""; }, 1200);
-      frame.addEventListener("load", function _onLoad() {
-        frame.removeEventListener("load", _onLoad);
-        clearTimeout(_loadTimer);
-        frame.style.opacity = "";
-      });
-    }
-    overlay.classList.remove("hidden");
+    // [순서 중요] chatPanel·body 클래스·모드 설정을 overlay 표시 전에 먼저 처리
+    if (chatPanel) chatPanel.classList.add("hidden");
+    if (body) body.classList.add("is-game-mode");
+
     try { overlay.dataset.mode = bgmKey || ""; } catch(e) {}
     // [X-only 닫기 버튼] 일부 게임(구구단/덧셈주사위/꿈틀이도형추적자/수학탐험대)에서만 외부 ✕ 표시
     const xOnly = (bgmKey === "game1" || bgmKey === "game2" || bgmKey === "game3" || bgmKey === "game4");
@@ -86,9 +75,6 @@
     try {
       if (closeBtn) closeBtn.style.display = xOnly ? "inline-flex" : "none";
     } catch(e) {}
-
-
-    
 
     // 실시간 톡 화면에서는 외부 상단바를 확실히 숨기기 위한 모드 클래스
     try {
@@ -101,8 +87,28 @@
         overlay.classList.remove("mode-messenger");
       }
     } catch(e) {}
-if (chatPanel) chatPanel.classList.add("hidden");
-    if (body) body.classList.add("is-game-mode");
+
+    const targetHref = new URL(url, location.href).href;
+    const srcAlreadySet = (frame.src === targetHref);
+
+    if (srcAlreadySet) {
+      // 이미 같은 src → 바로 표시 (프리로드된 경우: 실시간톡 또는 같은 게임 재진입)
+      overlay.classList.remove("hidden");
+    } else {
+      // src가 달라지는 경우(프리로드된 social-messenger → 게임 등):
+      // iframe이 이전 페이지를 보여주는 플리커를 막기 위해
+      // overlay는 hidden 유지한 채 src만 먼저 바꾸고, load 완료 후 표시
+      frame.src = url;
+      var _loadTimer = setTimeout(function() {
+        // load 이벤트가 늦거나 안 오는 경우 대비 최대 1.5초 후 강제 표시
+        overlay.classList.remove("hidden");
+      }, 1500);
+      frame.addEventListener("load", function _onLoad() {
+        frame.removeEventListener("load", _onLoad);
+        clearTimeout(_loadTimer);
+        overlay.classList.remove("hidden");
+      });
+    }
     // Live2D 게임모드 크기 즉시 적용 (MutationObserver 타이밍 보완)
     setTimeout(function() {
       try { if (typeof window._applyLive2DGameMode === "function") window._applyLive2DGameMode(); } catch(e) {}
