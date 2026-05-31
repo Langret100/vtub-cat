@@ -1882,6 +1882,7 @@ const G = {
             document.getElementById('mathScreen').classList.add('hidden');
             this.showItemScreen();  // 여기서 paused = true가 다시 설정됨
             this.textParticle(this.currentChest.x, this.currentChest.y, '✓', '#0f0', 1);
+
         } else {
             // 오답! 다시 시도
             SoundManager.wrong();
@@ -3925,6 +3926,10 @@ class Player {
         
         // 피격 사운드
         SoundManager.playerHit();
+        // 40% 확률로 피격 대사
+        if (Math.random() < 0.4) {
+            try { if (typeof window._mathSay === "function") window._mathSay("hit"); } catch(_) {}
+        }
         
         // 데미지 텍스트 표시
         G.textParticle(this.x, this.y, `-${Math.round(dmg)}`, '#f00', 1);
@@ -3932,6 +3937,14 @@ class Player {
         // ===== 피격 효과 =====
         G.screenShake = 9;  // 화면 흔들림 효과
         
+        // 체력 30% 미만 경고 대사 (직전에 위험하지 않았던 경우만)
+        const hpRatio = this.hp / this.maxHp;
+        if (hpRatio > 0 && hpRatio < 0.3 && !this._lowHpWarned) {
+            this._lowHpWarned = true;
+            try { if (typeof window._mathSay === "function") window._mathSay("lowHp"); } catch(_) {}
+        } else if (hpRatio >= 0.3) {
+            this._lowHpWarned = false;
+        }
         // 죽음 체크
         if (this.hp <= 0) {
             G.gameOver();
