@@ -102,7 +102,7 @@
       ".game-ghost-bubble {",
       "  position: fixed;",
       "  padding: 8px 13px;",
-      "  border-radius: 16px 16px 16px 4px;",   /* 왼쪽 아래가 뾰족 → 말꼬리가 오른쪽 아래에 */
+      "  border-radius: 16px;",
       "  background: rgba(255,255,255,0.97);",
       "  box-shadow: 0 4px 14px rgba(0,0,0,0.22);",
       "  font-size: 0.80rem;",
@@ -183,12 +183,14 @@
       var bubBottom  = window.innerHeight - headY + gap;
 
       // 말풍선 왼쪽: 캐릭터 왼쪽에서 시작, 단 화면 밖으로 나가지 않도록 클램프
-      var bubLeft = Math.max(6, Math.min(rect.left, window.innerWidth - maxBubW - 6));
+      // 말풍선 오른쪽을 캐릭터 오른쪽에 맞춤 (오른쪽 빈 공간 제거)
+      var bubRight = window.innerWidth - Math.min(rect.right, window.innerWidth - 6);
+      bubRight = Math.max(6, bubRight);
 
       return {
         bottom:   Math.max(4, Math.round(bubBottom)) + "px",
-        left:     Math.round(bubLeft) + "px",
-        right:    "auto",
+        left:     "auto",
+        right:    Math.round(bubRight) + "px",
         maxWidth: maxBubW + "px"
       };
     }
@@ -206,10 +208,11 @@
     // 캐릭터 머리(상단 20% 지점) 바로 위
     var headBottom = charH * 0.82;
 
+    var bubRight = window.innerWidth - (bubLeft + bubW);
     return {
       bottom:   Math.round(headBottom) + "px",
-      left:     Math.max(4, bubLeft) + "px",
-      right:    "auto",
+      left:     "auto",
+      right:    Math.max(4, Math.round(bubRight)) + "px",
       maxWidth: bubW + "px"
     };
   }
