@@ -22,7 +22,7 @@
     try {
       if (window.currentCharacterName) names.push(String(window.currentCharacterName));
     } catch (e) {}
-    names.push("야옹이", "야옹이야", "야옹아", "얘", "야", "저기", "있잖아");
+    names.push("미나", "민수", "마이파이", "얘", "야", "저기", "있잖아");
     names.forEach(function (name) {
       if (!name) return;
       const re = new RegExp("^(?:" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")([야아야요!,~ ]+)?", "i");
@@ -115,7 +115,6 @@
 
     const silent = !!(options && options.silent);
     try { if (!silent && typeof window.setEmotion === "function") window.setEmotion("기쁨", line); } catch (e) {}
-    if (!silent) speak(line);
 
     let popup = null;
     try {
@@ -152,7 +151,6 @@
       : "기본화면으로 정리해둘게요.";
     const silent = !!(options && options.silent);
     try { if (!silent && typeof window.setEmotion === "function") window.setEmotion("인사", line); } catch (e) {}
-    if (!silent) speak(line);
     restoreDefaultScreen();
     return true;
   }
