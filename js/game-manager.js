@@ -60,9 +60,20 @@
   function enterGame(url, bgmKey){
     if (!overlay || !frame) return;
     const isMessenger = (bgmKey === "messenger");
-    // 프리로드로 이미 같은 src가 세팅돼 있으면 재로드 생략 (SignalBus 구독 유지)
-    if (!frame.src || frame.src !== (new URL(url, location.href).href)) {
+    const targetHref = new URL(url, location.href).href;
+    const srcChanged = frame.src !== targetHref;
+
+    // src를 바꿔야 할 때: iframe이 로드 완료되기 전에 overlay가 열리면
+    // 기존 social-messenger 화면이 잠깐 비침 → frame을 투명처리 후 load 후에 복원
+    if (srcChanged) {
+      frame.style.opacity = "0";
       frame.src = url;
+      var _loadTimer = setTimeout(function() { frame.style.opacity = ""; }, 1200);
+      frame.addEventListener("load", function _onLoad() {
+        frame.removeEventListener("load", _onLoad);
+        clearTimeout(_loadTimer);
+        frame.style.opacity = "";
+      });
     }
     overlay.classList.remove("hidden");
     try { overlay.dataset.mode = bgmKey || ""; } catch(e) {}
