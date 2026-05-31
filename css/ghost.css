@@ -4,6 +4,15 @@
    - 긴 터치/클릭 시 파란 선택 영역 및 기본 터치 하이라이트를 숨깁니다.
    - 텍스트 복사가 필요해지면, 해당 영역에 user-select:auto;를 다시 지정해 주세요.
 */
+
+/* html 자체도 overflow:hidden 필요 — body의 overflow:hidden만으로는
+   body 내 overflow:visible 자식(#ghost, #ghostContainer 등)이 만드는
+   스크롤을 막지 못합니다. */
+html {
+  overflow: hidden;
+  height: 100%;
+}
+
 html, body, body * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;

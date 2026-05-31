@@ -1,7 +1,9 @@
-// game-ghost.js v5 - Live2D 연동 (말풍선은 iframe 내부, 캐릭터는 부모 창 Live2D)
+// game-ghost.js v6 - 말풍선을 캐릭터 머리 바로 위에 정확히 배치
+// 부모 창(Live2D ghostContainer)의 실제 getBoundingClientRect()를 postMessage로 수신해 위치 계산
 (function () {
   if (window.gameGhostUI) return;
 
+  // ─────────── 대사 정의 ───────────
   const LINES = {
     start: [
       "좋아, 한 번 제대로 놀아보자!",
@@ -65,7 +67,7 @@
     ]
   };
 
-  // 이벤트 타입 → game-emotion.js REACTIONS 키 직접 매핑
+  // 이벤트 타입 → game-emotion.js REACTIONS 키 매핑
   const EMOTION_REMAP = {
     start:     "start",
     correct:   "good",
@@ -78,100 +80,152 @@
     reward:    "good"
   };
 
-  let bubbleEl = null;
+  let bubbleEl  = null;
   let hideTimer = null;
+
+  // 부모 창에서 받아온 ghostContainer 위치 캐시
+  // { left, top, right, bottom, width, height } (뷰포트 기준 px)
+  let cachedGhostRect = null;
+  let rectRequested   = false;
 
   function choice(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
+  // ─────────── DOM 생성 ───────────
   function ensureDom() {
     if (bubbleEl) return;
-    const d = document;
-    const style = d.createElement("style");
-    style.textContent = `
-      .game-ghost-bubble {
-        position: fixed;
-        right: auto;
-        left: auto;
-        bottom: 0;
-        padding: 7px 11px;
-        border-radius: 14px 14px 4px 14px;
-        background: rgba(255,255,255,0.97);
-        box-shadow: 0 3px 12px rgba(0,0,0,0.22);
-        font-size: 0.78rem;
-        line-height: 1.42;
-        text-align: left;
-        color: #222;
-        opacity: 0;
-        transform: translateY(8px);
-        transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-        pointer-events: none;
-        z-index: 10002;
-        box-sizing: border-box;
-        word-break: keep-all;
-        overflow-wrap: break-word;
-        width: fit-content;
-        width: -webkit-fit-content;
-        max-width: var(--bubble-max-w, 260px);
-      }
-      .game-ghost-bubble::after {
-        content: '';
-        position: absolute;
-        right: -8px;
-        bottom: 10px;
-        width: 14px;
-        height: 14px;
-        background: rgba(255,255,255,0.97);
-        border-right: 1px solid rgba(0,0,0,0.08);
-        border-bottom: 1px solid rgba(0,0,0,0.08);
-        transform: rotate(45deg);
-        box-shadow: 3px 3px 6px rgba(0,0,0,0.10);
-      }
-      .game-ghost-bubble.visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    `;
+    var d = document;
+    var style = d.createElement("style");
+    style.textContent = [
+      /* 말풍선 본체 */
+      ".game-ghost-bubble {",
+      "  position: fixed;",
+      "  padding: 8px 13px;",
+      "  border-radius: 16px 16px 16px 4px;",   /* 왼쪽 아래가 뾰족 → 말꼬리가 오른쪽 아래에 */
+      "  background: rgba(255,255,255,0.97);",
+      "  box-shadow: 0 4px 14px rgba(0,0,0,0.22);",
+      "  font-size: 0.80rem;",
+      "  line-height: 1.45;",
+      "  text-align: left;",
+      "  color: #1e293b;",
+      "  opacity: 0;",
+      "  transform: translateY(6px);",
+      "  transition: opacity 0.22s ease-out, transform 0.22s ease-out;",
+      "  pointer-events: none;",
+      "  z-index: 10002;",
+      "  box-sizing: border-box;",
+      "  word-break: keep-all;",
+      "  overflow-wrap: break-word;",
+      "  width: fit-content;",
+      "  width: -webkit-fit-content;",
+      "  max-width: var(--bubble-max-w, 240px);",
+      "}",
+      /* 말꼬리: 말풍선 오른쪽 아래 → 캐릭터(오른쪽 방향) 쪽 */
+      ".game-ghost-bubble::after {",
+      "  content: '';",
+      "  position: absolute;",
+      "  right: 14px;",             /* 말풍선 오른쪽에서 14px 안쪽 */
+      "  bottom: -8px;",            /* 말풍선 아래로 삐져나옴 */
+      "  width: 14px;",
+      "  height: 14px;",
+      "  background: rgba(255,255,255,0.97);",
+      "  border-right: 1px solid rgba(0,0,0,0.07);",
+      "  border-bottom: 1px solid rgba(0,0,0,0.07);",
+      "  transform: rotate(45deg);",
+      "  box-shadow: 3px 3px 5px rgba(0,0,0,0.09);",
+      "}",
+      ".game-ghost-bubble.visible {",
+      "  opacity: 1;",
+      "  transform: translateY(0);",
+      "}"
+    ].join("\n");
     d.head.appendChild(style);
+
     bubbleEl = d.createElement("div");
     bubbleEl.className = "game-ghost-bubble";
     d.body.appendChild(bubbleEl);
   }
 
+  // ─────────── 부모 창에 ghostContainer 위치 요청 ───────────
+  function requestGhostRect() {
+    if (rectRequested) return;
+    rectRequested = true;
+    try {
+      var target = (window.parent !== window) ? window.parent : (window.opener || null);
+      if (target) target.postMessage({ type: "GAME_GHOST_RECT_REQ" }, "*");
+    } catch (e) {}
+    // 200ms 후 자동 해제 → 다음 react() 호출 시 재요청 가능
+    setTimeout(function () { rectRequested = false; }, 200);
+  }
+
+  // 부모 창 응답 수신
+  window.addEventListener("message", function (ev) {
+    if (!ev.data || ev.data.type !== "GAME_GHOST_RECT_RES") return;
+    cachedGhostRect = ev.data.rect; // { left, top, right, bottom, width, height }
+  });
+
+  // ─────────── 말풍선 위치 계산 ───────────
+  // ghostContainer rect(부모 뷰포트 기준)를 기반으로
+  // 캐릭터 머리 바로 위 + 왼쪽 정렬
   function calcBubblePos() {
-    var isMob = window.innerWidth <= 768;
-    var charW, charH, bubW, bubLeft, bubbleBottom;
-    if (isMob) {
-      charW = Math.min(140, Math.max(85,  Math.round(window.innerWidth  * 0.28)));
-      charH = Math.min(220, Math.max(140, Math.round(window.innerHeight * 0.26)));
-    } else {
-      charW = Math.min(200, Math.max(120, Math.round(window.innerWidth  * 0.14)));
-      charH = Math.min(300, Math.max(200, Math.round(window.innerHeight * 0.32)));
+    var isMob  = window.innerWidth <= 768;
+    var maxBubW = isMob ? 200 : 240;
+    var gap     = 10; // 말풍선 아래 끝 ~ 캐릭터 머리 사이 간격(px)
+
+    if (cachedGhostRect) {
+      var rect = cachedGhostRect;
+
+      // 캐릭터 머리 높이 추정: ghostContainer 상단에서 약 15% 지점
+      // (Live2D 모델은 컨테이너 꼭대기가 아닌 약간 아래에서 시작)
+      var headY  = rect.top + rect.height * 0.15;
+      // 말풍선 하단 = 머리 위 gap px
+      var bubBottom  = window.innerHeight - headY + gap;
+
+      // 말풍선 왼쪽: 캐릭터 왼쪽에서 시작, 단 화면 밖으로 나가지 않도록 클램프
+      var bubLeft = Math.max(6, Math.min(rect.left, window.innerWidth - maxBubW - 6));
+
+      return {
+        bottom:   Math.max(4, Math.round(bubBottom)) + "px",
+        left:     Math.round(bubLeft) + "px",
+        right:    "auto",
+        maxWidth: maxBubW + "px"
+      };
     }
-    // 말풍선 너비 = 캐릭터 너비의 170% (캐릭터보다 조금 넓게, 잘림 없도록)
-    bubW = Math.round(charW * 1.7);
-    // 말풍선 오른쪽 끝 = 캐릭터 오른쪽에 맞춤, 텍스트 길이만큼만 너비 사용
-    bubLeft = window.innerWidth - bubW - (isMob ? 6 : 10);
-    bubbleBottom = Math.round(charH * 0.95) + "px";
+
+    // rect 미수신 시 폴백: 화면 크기 기반 추정
+    var charW = isMob
+      ? Math.min(140, Math.max(85,  Math.round(window.innerWidth  * 0.28)))
+      : Math.min(200, Math.max(120, Math.round(window.innerWidth  * 0.14)));
+    var charH = isMob
+      ? Math.min(220, Math.max(140, Math.round(window.innerHeight * 0.26)))
+      : Math.min(300, Math.max(200, Math.round(window.innerHeight * 0.32)));
+
+    var bubW    = Math.round(charW * 1.7);
+    var bubLeft = window.innerWidth - bubW - (isMob ? 6 : 10);
+    // 캐릭터 머리(상단 20% 지점) 바로 위
+    var headBottom = charH * 0.82;
+
     return {
-      bottom:   bubbleBottom,
+      bottom:   Math.round(headBottom) + "px",
       left:     Math.max(4, bubLeft) + "px",
       right:    "auto",
       maxWidth: bubW + "px"
     };
   }
 
+  // ─────────── 말풍선 표시/숨김 ───────────
   function showBubble(text) {
     if (!bubbleEl) return;
     if (text) {
       bubbleEl.textContent = text;
       var pos = calcBubblePos();
-      bubbleEl.style.bottom    = pos.bottom;
-      bubbleEl.style.left      = pos.left;
-      bubbleEl.style.right     = pos.right;
-      bubbleEl.style.maxWidth  = pos.maxWidth;
-      bubbleEl.style.width     = "fit-content";
+      bubbleEl.style.bottom   = pos.bottom;
+      bubbleEl.style.left     = pos.left;
+      bubbleEl.style.right    = pos.right;
+      bubbleEl.style.setProperty("--bubble-max-w", pos.maxWidth);
+      bubbleEl.style.maxWidth = pos.maxWidth;
+      bubbleEl.style.width    = "fit-content";
       bubbleEl.classList.add("visible");
     } else {
       bubbleEl.textContent = "";
@@ -179,26 +233,43 @@
     }
   }
 
+  // ─────────── react: 게임 이벤트 처리 ───────────
   function react(eventType) {
     ensureDom();
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
 
-    const line = choice(LINES[eventType] || [""]);
-    // 말풍선은 iframe 안에 표시 (캐릭터 바로 위)
-    showBubble(line);
+    // 부모 창에 캐릭터 위치 요청 (비동기 — 이미 캐시된 값 있으면 즉시 사용)
+    requestGhostRect();
 
-    // 부모 창 Live2D로 감정 전달 (game-emotion.js REACTIONS 키로 직접 매핑)
+    var line = choice(LINES[eventType] || [""]);
+
+    // rect 수신 약간 기다렸다가 표시 (최대 80ms, rect 없으면 폴백으로 즉시 표시)
+    var shown = false;
+    function doShow() {
+      if (shown) return;
+      shown = true;
+      showBubble(line);
+    }
+
+    if (cachedGhostRect) {
+      doShow();
+    } else {
+      setTimeout(doShow, 80);
+    }
+
+    // 부모 창 Live2D 감정 전달
     var parentType = EMOTION_REMAP[eventType] || eventType;
     try {
       var target = (window.parent !== window) ? window.parent : (window.opener || null);
       if (target) target.postMessage({ type: "GAME_REACT", eventType: parentType }, "*");
-    } catch(e) {}
+    } catch (e) {}
 
-    hideTimer = setTimeout(function() { showBubble(""); }, 5000);
+    hideTimer = setTimeout(function () { showBubble(""); }, 5000);
   }
 
-  window.gameGhostUI = { react: react };
-  window.gameGhostReact = react;  // 편의 별칭
+  // ─────────── 공개 API ───────────
+  window.gameGhostUI  = { react: react };
+  window.gameGhostReact = react; // 편의 별칭
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", ensureDom);

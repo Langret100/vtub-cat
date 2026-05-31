@@ -242,12 +242,37 @@ overlay.classList.add("hidden");
   window.sendMessengerText = sendMessengerText;
 
   // iframe(게임/실시간 톡) 내부에서 닫기 요청이 오는 경우(postMessage)
+  // 또는 game-ghost.js가 ghostContainer 실제 위치를 요청하는 경우(GAME_GHOST_RECT_REQ)
   window.addEventListener("message", function(ev){
     const data = ev && ev.data;
     if (!data) return;
+
     // {type:"WG_EXIT_GAME"} 또는 문자열 형태 모두 지원
     if (data === "WG_EXIT_GAME" || (typeof data === "object" && data.type === "WG_EXIT_GAME")) {
       exitGame();
+      return;
+    }
+
+    // game-ghost.js: 캐릭터 위치 요청 → ghostContainer의 실제 뷰포트 좌표 응답
+    if (typeof data === "object" && data.type === "GAME_GHOST_RECT_REQ") {
+      try {
+        var gc = document.getElementById("ghostContainer");
+        if (gc && frame && frame.contentWindow) {
+          var r = gc.getBoundingClientRect();
+          frame.contentWindow.postMessage({
+            type: "GAME_GHOST_RECT_RES",
+            rect: {
+              left:   r.left,
+              top:    r.top,
+              right:  r.right,
+              bottom: r.bottom,
+              width:  r.width,
+              height: r.height
+            }
+          }, "*");
+        }
+      } catch(e) {}
+      return;
     }
   });
 
