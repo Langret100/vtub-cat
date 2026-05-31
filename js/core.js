@@ -1895,7 +1895,7 @@ function getCharacterCallAliases(name) {
   if (base) aliases.push(base);
 
   if (base === "야옹이") {
-    aliases.push("야옹이야", "야옹아");
+    aliases.push("야옹이야", "야옹아", "냐옹", "고양아", "고양이야", "야옹");
   } else if (base === "우주") {
     aliases.push("접수원", "우주", "우주야");
   }
@@ -2399,6 +2399,7 @@ window.GhostCoreBridge = Object.assign({}, window.GhostCoreBridge || {}, {
   getUnifiedCharacterChatResponse: getUnifiedCharacterChatResponse,
   extractCharacterCallText: extractCharacterCallText,
   getCurrentCharacterName: function(){ return currentCharacterName || "고스트"; },
+  getCharacterCallAliases: function(name){ return getCharacterCallAliases(name || currentCharacterName || ""); },
   getCurrentCharacterFaceImg: function(){
     // 현재 감정의 얼굴 이미지 경로 반환 (메신저 아바타 용)
     try {

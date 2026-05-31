@@ -1713,7 +1713,19 @@ function __applyRelayMessage(msgInfo) {
 
       var compactText = text.replace(/\s+/g, "");
       var compactName = charName.replace(/\s+/g, "");
-      if (!compactText.includes(compactName)) return;
+      // 이름 원문 외에 호칭형(야옹아, 야옹이야, 우주야 등)도 감지
+      var nameAliases = [compactName];
+      try {
+        if (window.parent && window.parent.GhostCoreBridge &&
+            typeof window.parent.GhostCoreBridge.getCharacterCallAliases === "function") {
+          var raw = window.parent.GhostCoreBridge.getCharacterCallAliases(charName);
+          if (Array.isArray(raw)) raw.forEach(function(a){ if (a) nameAliases.push(a.replace(/\s+/g,"")); });
+        }
+      } catch(e) {}
+      // 이름+야/아 형태도 커버
+      nameAliases.push(compactName + "야", compactName + "아");
+      var nameMatched = nameAliases.some(function(n){ return n && compactText.includes(n); });
+      if (!nameMatched) return;
 
       var now = Date.now();
       if (now - _charCooldown < _CHAR_COOLDOWN_MS) return;

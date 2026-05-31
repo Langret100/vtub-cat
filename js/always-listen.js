@@ -111,10 +111,10 @@
     try {
       const current = String(window.currentCharacterName || '').trim();
       if (current) names.push(current);
-      if (current === '야옹이') names.push('야옹이야','야옹아');
+      if (current === '야옹이') names.push('야옹이야','야옹아','냐옹','고양아','고양이야','야옹');
       if (current === '우주') names.push('접수원','우주');
     } catch(e){}
-    names.push('야옹이','야옹이야','야옹아','얘','야','저기','있잖아','잠깐');
+    names.push('야옹이','야옹이야','야옹아','냐옹','고양아','고양이야','야옹','얘','야','저기','있잖아','잠깐');
     return Array.from(new Set(names.filter(Boolean))).sort(function(a,b){ return b.length - a.length; });
   }
 
