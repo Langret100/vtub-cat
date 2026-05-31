@@ -1640,7 +1640,7 @@ function __applyRelayMessage(msgInfo) {
         return String(bridge.getCurrentCharacterName());
       }
     } catch(e) {}
-    return "미나";
+    return "야옹이";
   }
 
   function sendCharacterMessage(text) {
