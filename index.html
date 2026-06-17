@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>마이파이</title>
    <link rel="icon" href="./favicon.ico"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
   <link rel="manifest" href="./manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -292,7 +292,8 @@ body.is-game-mode #ghost {
       <button class="bg-option" data-bg="default">1) 기본 배경 (그라데이션 + 물결)</button>
       <button class="bg-option" data-bg="snow">2) 눈 내리는 겨울 배경</button>
       <button class="bg-option" data-bg="train">3) 열차 배경 + 지도</button>
-      <button class="bg-option" data-bg="custom">4) 사용자 배경 (이미지 업로드)</button>
+      <button class="bg-option" data-bg="broadcasting_room">4) 방송방</button>
+      <button class="bg-option" data-bg="custom">5) 사용자 배경 (이미지 업로드)</button>
       <input id="customBgInput" type="file" accept="image/*" style="display:none;">
       <div class="bg-panel-actions">
         <button type="button" id="bgPanelConfirm">확인</button>
@@ -400,8 +401,8 @@ body.is-game-mode #ghost {
   <script src="js/ghost-hide.js"></script>
   <!-- Live2D: 번들(Cubism4+PixiJS) → 에셋 인라인 → 감정 연동 -->
   <script src="live2d/pixi-live2d.bundle.js"></script>
-  <script src="live2d/hijiki_assets.js"></script>
-  <script src="live2d/ujuu_assets.js"></script>
+  <script src="live2d/tori_assets.js"></script>
+  <script src="live2d/yura_assets.js"></script>
   <script src="js/live2d-emotion.js"></script>
   <script src="js/messenger-chat-command.js"></script>
   
@@ -489,6 +490,8 @@ body.is-game-mode #ghost {
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
   <script src="js/social-chat-firebase.js"></script>
+  <script src="js/schedule-calendar.js"></script>
+  <script src="js/padlet-launcher.js"></script>
   <!-- [옵션 기능] FCM 웹 푸시 알림 모듈 -->
   <script src="js/fcm-push.js"></script>
   <script src="js/always-listen.js"></script>
