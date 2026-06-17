@@ -1,19 +1,24 @@
-// padlet-launcher.js v12
+// padlet-launcher.js v17
+// - 모바일 동적 viewport(주소창 변화) 대응: 100% 대신 100dvh
+// - transform:scale 방식 제거 (클릭 좌표 어긋남 방지) — 좁은 화면은 좌측 정렬 + 약간 잘림 허용
+// - 클릭 정확도를 잘림보다 우선
 
 (function () {
   if (window.PadletLauncher) return;
 
-  var URL   = "https://zrr.kr/svrHqA";
-  var BTID  = "padletBtn";
-  var CLIP  = 56;
-  var BAR_H = 44;
+  var URL        = "https://zrr.kr/svrHqA";
+  var BTID       = "padletBtn";
+  var CLIP       = 0;
+  var BAR_H      = 44;
+  var CONTENT_W  = 390;
+  var OVERHANG   = 10;
 
   function addStyle() {
     if (document.getElementById("pl-s")) return;
     var el = document.createElement("style");
     el.id = "pl-s";
     el.textContent =
-      "#padletBtn{position:absolute;top:102px;right:14px;width:42px;height:42px;" +
+      "#padletBtn{position:absolute;top:14px;right:14px;width:42px;height:42px;" +
       "background:none!important;border:none!important;outline:none;" +
       "box-shadow:none!important;backdrop-filter:none!important;" +
       "cursor:pointer;z-index:15;padding:0;" +
@@ -23,29 +28,25 @@
       "#padletBtn svg{filter:drop-shadow(0 0 7px rgba(255,200,120,.7));}" +
 
       "#pl-dim{display:none;position:fixed;inset:0;z-index:9100;" +
-      "background:rgba(0,0,0,.6);align-items:center;justify-content:center;}" +
+      "background:rgba(0,0,0,.6);align-items:center;justify-content:center;" +
+      "overflow:hidden;}" +
       "#pl-dim.open{display:flex;}" +
 
-      /* 패널: 모바일 폭 390px 고정 → 패들렛이 모바일로 렌더링 */
       "#pl-panel{position:relative;" +
-      "width:min(390px,96vw);height:88vh;" +
+      "width:min(" + (CONTENT_W - OVERHANG) + "px,94vw);height:88vh;" +
       "max-height:960px;min-height:400px;" +
       "border-radius:14px;overflow:hidden;" +
       "box-shadow:0 8px 48px rgba(0,0,0,.55);}" +
 
-      /* 클립 래퍼 */
       "#pl-clip{position:absolute;" +
       "top:" + BAR_H + "px;left:0;right:0;bottom:0;" +
       "overflow:hidden;}" +
 
-      /* iframe: 패널 폭에 꽉 채움, 스크롤바 없음 */
       "#pl-frame{position:absolute;" +
       "top:-" + CLIP + "px;left:0;" +
-      "width:100%;height:calc(100% + " + CLIP + "px);" +
-      "border:none;display:block;" +
-      "overflow:hidden;}" +
+      "width:" + CONTENT_W + "px;height:calc(100% + " + CLIP + "px);" +
+      "border:none;display:block;}" +
 
-      /* 버튼 바 */
       "#pl-bar{position:absolute;top:0;left:0;right:0;" +
       "height:" + BAR_H + "px;z-index:10;" +
       "display:none;align-items:center;justify-content:space-between;" +
@@ -61,9 +62,14 @@
       ".pl-btn:hover{background:rgba(255,255,255,.22);}" +
       ".pl-btn:active{transform:scale(.9);}" +
 
+      /* 모바일: 동적 viewport 높이 대응 — 100dvh 우선, 미지원 브라우저는 100% */
       "@media(max-width:640px){" +
-      "#pl-dim{align-items:stretch;justify-content:stretch;}" +
-      "#pl-panel{width:100%;height:100%;min-height:0;max-height:none;border-radius:0;}" +
+      "#pl-panel{width:" + (CONTENT_W - OVERHANG) + "px;height:92%;min-height:0;max-height:none;border-radius:14px;}" +
+      "}" +
+      "@supports (height:100dvh){" +
+      "@media(max-width:640px){" +
+      "#pl-panel{height:92dvh;}" +
+      "}" +
       "}";
     document.head.appendChild(el);
   }
